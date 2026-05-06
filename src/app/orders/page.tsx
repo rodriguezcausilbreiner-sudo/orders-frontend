@@ -28,17 +28,19 @@ export default function OrdersPage() {
       const filters: Record<string, unknown> = { page, limit: 5 };
       if (activeTab !== 'All') filters.status = activeTab;
       const res = await ordersService.getOrders(filters);
-      setOrders(res.data);
-      setTotal(res.meta.total);
-      setTotalPages(res.meta.totalPages);
+      const data = Array.isArray(res) ? res : (res.data ?? []);
+      const meta = (res as any).meta ?? (res as any).pagination ?? {};
+      setOrders(data);
+      setTotal(meta.total ?? meta.totalItems ?? data.length);
+      setTotalPages(meta.totalPages ?? meta.pageCount ?? 1);
 
       // stats from first load
       if (page === 1 && activeTab === 'All') {
-        const revenue = res.data.reduce((acc, o) => acc + (o.totalAmount || 0), 0);
+        const revenue = data.reduce((acc: number, o: any) => acc + (o.totalAmount || 0), 0);
         setStats({
-          total: res.meta.total,
-          pending: res.data.filter(o => o.status === 'Pending').length,
-          delivered: res.data.filter(o => o.status === 'Delivered').length,
+          total: meta.total ?? meta.totalItems ?? data.length,
+          pending: data.filter((o: any) => o.status === 'Pending').length,
+          delivered: data.filter((o: any) => o.status === 'Delivered').length,
           revenue,
         });
       }

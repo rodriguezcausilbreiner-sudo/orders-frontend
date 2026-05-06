@@ -97,11 +97,16 @@ export default function DashboardPage() {
           productsService.getProducts({ page: 1, limit: 1 }),
         ]);
 
-        setOrders(ordersRes.data);
-        setTotalOrders(ordersRes.meta.total);
-        setTotalProducts(productsRes.meta.total);
+        const ordersData: Order[] = Array.isArray(ordersRes) ? ordersRes : (ordersRes.data ?? []);
+        const ordersMeta = (ordersRes as any).meta ?? (ordersRes as any).pagination ?? {};
+        const productsData = Array.isArray(productsRes) ? productsRes : (productsRes.data ?? []);
+        const productsMeta = (productsRes as any).meta ?? (productsRes as any).pagination ?? {};
 
-        const sales = ordersRes.data.reduce((acc, o) => acc + (o.totalAmount || 0), 0);
+        setOrders(ordersData);
+        setTotalOrders(ordersMeta.total ?? ordersMeta.totalItems ?? ordersData.length);
+        setTotalProducts(productsMeta.total ?? productsMeta.totalItems ?? productsData.length);
+
+        const sales = ordersData.reduce((acc, o) => acc + ((o as any).totalAmount || 0), 0);
         setTotalSales(sales);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
