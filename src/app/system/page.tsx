@@ -3,12 +3,25 @@
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import { healthService } from '@/services/healthService';
+import {
+  GridComponent,
+  ColumnsDirective,
+  ColumnDirective,
+  Inject,
+  Sort,
+} from '@syncfusion/ej2-react-grids';
 
 interface HealthStatus {
   status: string;
   timestamp?: string;
   uptime?: number;
   database?: string;
+}
+
+interface ServiceRow {
+  name: string;
+  status: boolean;
+  detail: string;
 }
 
 export default function SystemPage() {
@@ -33,11 +46,11 @@ export default function SystemPage() {
 
   const isOk = health?.status === 'ok' || health?.status === 'healthy';
 
-  const services = [
-    { name: 'REST API', status: isOk, detail: 'All endpoints responding' },
-    { name: 'Database', status: isOk, detail: health?.database ?? 'Connected' },
-    { name: 'Auth Service', status: true, detail: 'Token validation active' },
-    { name: 'File Storage', status: true, detail: 'S3 bucket reachable' },
+  const services: ServiceRow[] = [
+    { name: 'API REST', status: isOk, detail: 'Todos los endpoints respondiendo' },
+    { name: 'Base de Datos', status: isOk, detail: health?.database ?? 'Conectada' },
+    { name: 'Servicio de Autenticación', status: true, detail: 'Validación de tokens activa' },
+    { name: 'Almacenamiento de Archivos', status: true, detail: 'Bucket S3 accesible' },
   ];
 
   const fmt = (s: number) => {
@@ -47,13 +60,29 @@ export default function SystemPage() {
     return `${d}d ${h}h ${m}m`;
   };
 
+  // ── Grid templates ─────────────────────────────────────────
+  const serviceNameTemplate = (row: ServiceRow) => (
+    <div className="flex items-center gap-3">
+      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${row.status ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+      <p className="text-sm font-medium text-slate-800">{row.name}</p>
+    </div>
+  );
+
+  const serviceStatusTemplate = (row: ServiceRow) => (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+      row.status ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+    }`}>
+      {row.status ? 'OPERATIVO' : 'CAÍDO'}
+    </span>
+  );
+
   return (
-    <AppShell>
+    <AppShell tabTitle="Salud del Sistema">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">System Status</h1>
-          <p className="text-sm text-slate-500">Real-time health monitoring of all platform services.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Estado del Sistema</h1>
+          <p className="text-sm text-slate-500">Monitoreo en tiempo real de todos los servicios de la plataforma.</p>
         </div>
         <button
           onClick={checkHealth}
@@ -63,7 +92,7 @@ export default function SystemPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          Refresh
+          Actualizar
         </button>
       </div>
 
@@ -74,10 +103,10 @@ export default function SystemPage() {
         </div>
         <div>
           <p className={`text-base font-bold ${isOk ? 'text-emerald-800' : 'text-red-800'}`}>
-            {loading ? 'Checking...' : isOk ? 'All Systems Operational' : 'Service Degradation Detected'}
+            {loading ? 'Verificando...' : isOk ? 'Todos los Sistemas Operativos' : 'Se Detectó una Degradación del Servicio'}
           </p>
           <p className={`text-xs ${isOk ? 'text-emerald-600' : 'text-red-600'}`}>
-            Last checked: {lastChecked ? lastChecked.toLocaleTimeString() : '—'}
+            Última comprobación: {lastChecked ? lastChecked.toLocaleTimeString() : '—'}
           </p>
         </div>
       </div>
@@ -85,61 +114,71 @@ export default function SystemPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">API Status</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Estado API</p>
           <p className={`text-2xl font-bold ${isOk ? 'text-emerald-600' : 'text-red-600'}`}>
-            {loading ? '—' : isOk ? 'Online' : 'Offline'}
+            {loading ? '—' : isOk ? 'En Línea' : 'Fuera de Línea'}
           </p>
           <p className="text-xs text-slate-400 mt-1">HTTP 200 OK</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Uptime</p>
-          <p className="text-2xl font-bold text-slate-900">
-            {health?.uptime ? fmt(health.uptime) : '—'}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">Since last restart</p>
+          <p className="text-2xl font-bold text-slate-900">{health?.uptime ? fmt(health.uptime) : '—'}</p>
+          <p className="text-xs text-slate-400 mt-1">Desde el último reinicio</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Environment</p>
-          <p className="text-2xl font-bold text-slate-900">Production</p>
-          <p className="text-xs text-slate-400 mt-1">v1.0.0 stable</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Entorno</p>
+          <p className="text-2xl font-bold text-slate-900">Producción</p>
+          <p className="text-xs text-slate-400 mt-1">v1.0.0 estable</p>
         </div>
       </div>
 
-      {/* Services Table */}
-      <div className="bg-white border border-slate-200 rounded-xl mb-6">
+      {/* Service Health Grid */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-6">
         <div className="px-5 py-4 border-b border-slate-100">
-          <p className="text-sm font-semibold text-slate-900">Service Health</p>
+          <p className="text-sm font-semibold text-slate-900">Salud de los Servicios</p>
         </div>
-        <div className="divide-y divide-slate-50">
-          {services.map((svc) => (
-            <div key={svc.name} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors">
-              <div className="flex items-center gap-3">
-                <span className={`w-2.5 h-2.5 rounded-full ${svc.status ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-                <p className="text-sm font-medium text-slate-800">{svc.name}</p>
-              </div>
-              <p className="text-xs text-slate-500">{svc.detail}</p>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${svc.status ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                {svc.status ? 'OPERATIONAL' : 'DOWN'}
-              </span>
-            </div>
-          ))}
-        </div>
+        <GridComponent
+          dataSource={services}
+          allowSorting
+          height="auto"
+        >
+          <ColumnsDirective>
+            <ColumnDirective
+              field="name"
+              headerText="Servicio"
+              width="200"
+              template={serviceNameTemplate}
+            />
+            <ColumnDirective
+              field="detail"
+              headerText="Detalle"
+              width="280"
+            />
+            <ColumnDirective
+              field="status"
+              headerText="Estado"
+              width="160"
+              template={serviceStatusTemplate}
+            />
+          </ColumnsDirective>
+          <Inject services={[Sort]} />
+        </GridComponent>
       </div>
 
       {/* API Info */}
       <div className="bg-white border border-slate-200 rounded-xl p-5">
-        <p className="text-sm font-semibold text-slate-900 mb-3">API Configuration</p>
+        <p className="text-sm font-semibold text-slate-900 mb-3">Configuración de la API</p>
         <div className="space-y-2 text-xs">
           <div className="flex justify-between">
-            <span className="text-slate-400">Base URL</span>
+            <span className="text-slate-400">URL Base</span>
             <span className="font-mono text-slate-700">{process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-400">Timestamp</span>
+            <span className="text-slate-400">Marca de Tiempo</span>
             <span className="font-mono text-slate-700">{health?.timestamp ?? '—'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-400">Response Status</span>
+            <span className="text-slate-400">Estado de Respuesta</span>
             <span className={`font-semibold ${isOk ? 'text-emerald-600' : 'text-red-600'}`}>
               {health?.status ?? '—'}
             </span>

@@ -2,12 +2,23 @@
 // TIPOS BASE DEL DOMINIO - OMS Portal
 // ============================================
 
+// --- CATEGORY ---
+export interface Category {
+  id: number;
+  categoryName: string;
+  description: string;
+}
+
 // --- CUSTOMER ---
 export interface Customer {
   id: number;
   firstName: string;
   lastName: string;
+  companyName?: string;
+  email?: string;
+  address?: string;
   city: string;
+  postalCode?: string;
   country: string;
   phone: string;
   fullName?: string;
@@ -19,7 +30,9 @@ export interface Supplier {
   companyName: string;
   contactName: string;
   contactTitle: string;
+  address?: string;
   city: string;
+  postalCode?: string;
   country: string;
   phone: string;
   fax?: string;
@@ -31,7 +44,13 @@ export interface Product {
   productName: string;
   supplierId: number;
   supplier?: Supplier;
+  categoryId?: number;
+  category?: Category;
+  quantityPerUnit?: string;
   unitPrice: number;
+  unitsInStock: number;
+  unitsOnOrder: number;
+  reorderLevel: number;
   package: string;
   isDiscontinued: boolean;
 }
@@ -124,7 +143,7 @@ export interface UpdateProductRequest {
 export interface OrderFilters {
   page?: number;
   limit?: number;
-  customerId?: number;
+  customerId?: string | number;
   dateFrom?: string;
   dateTo?: string;
   sort?: string;
@@ -140,6 +159,14 @@ export interface ProductFilters {
 }
 
 export interface CustomerFilters {
+  page?: number;
+  limit?: number;
+  country?: string;
+  city?: string;
+  search?: string;
+}
+
+export interface SupplierFilters {
   page?: number;
   limit?: number;
   country?: string;

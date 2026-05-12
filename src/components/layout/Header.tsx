@@ -22,7 +22,7 @@ export default function Header({ actionLabel, actionHref }: HeaderProps) {
         </svg>
         <input
           type="text"
-          placeholder="Search orders, clients, SKUs..."
+          placeholder="Buscar pedidos, clientes, SKUs..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md

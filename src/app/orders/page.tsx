@@ -1,318 +1,193 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useState, useRef } from 'react';
 import AppShell from '@/components/layout/AppShell';
-import StatusBadge from '@/components/ui/StatusBadge';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import Link from 'next/link';
 import { ordersService } from '@/services/ordersService';
 import { Order, OrderStatus } from '@/types';
-
-const STATUS_TABS = ['All', 'Pending', 'Processing', 'Delivered', 'Cancelled'];
+import StatusBadge from '@/components/ui/StatusBadge';
+import { useToast } from '@/components/ToastProvider';
+import {
+  GridComponent,
+  ColumnsDirective,
+  ColumnDirective,
+  Page,
+  Sort,
+  Filter,
+  Group,
+  Search,
+  Inject,
+  Toolbar,
+  ExcelExport,
+  PdfExport,
+  ToolbarItems,
+} from '@syncfusion/ej2-react-grids';
 
 export default function OrdersPage() {
+  const { showToast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('All');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [stats, setStats] = useState({
-    total: 0, pending: 0, delivered: 0, revenue: 0,
-  });
+  const gridRef = useRef<GridComponent>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const filters: Record<string, unknown> = { page, limit: 5 };
-      if (activeTab !== 'All') filters.status = activeTab;
-      const res = await ordersService.getOrders(filters);
-      const data = Array.isArray(res) ? res : (res.data ?? []);
-      const meta = (res as any).meta ?? (res as any).pagination ?? {};
-      setOrders(data);
-      setTotal(meta.total ?? meta.totalItems ?? data.length);
-      setTotalPages(meta.totalPages ?? meta.pageCount ?? 1);
-
-      // stats from first load
-      if (page === 1 && activeTab === 'All') {
-        const revenue = data.reduce((acc: number, o: any) => acc + (o.totalAmount || 0), 0);
-        setStats({
-          total: meta.total ?? meta.totalItems ?? data.length,
-          pending: data.filter((o: any) => o.status === 'Pending').length,
-          delivered: data.filter((o: any) => o.status === 'Delivered').length,
-          revenue,
-        });
-      }
-    } catch (err) {
-      console.error(err);
+      const res = await ordersService.getOrders({ page: 1, limit: 200 });
+      setOrders(res.data);
+      setTotal(res.meta.total);
+    } catch (e) {
+      console.error(e);
+      setOrders([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchOrders(); }, [page, activeTab]);
+  useEffect(() => { fetchOrders(); }, []);
 
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+  const handleDelete = async (id: number) => {
+    if (!confirm('¿Estás seguro de eliminar este pedido?')) return;
+    try {
+      await ordersService.deleteOrder(id);
+      showToast('Pedido Eliminado', 'La orden ha sido removida permanentemente', 'Success');
+      fetchOrders();
+    } catch (e) {
+      showToast('Error', 'No se pudo eliminar el pedido', 'Error');
+    }
+  };
 
-  const filteredOrders = search
-    ? orders.filter(o => {
-        const name = o.customer
-          ? `${o.customer.firstName} ${o.customer.lastName}`.toLowerCase()
-          : '';
-        return (
-          name.includes(search.toLowerCase()) ||
-          String(o.id).includes(search) ||
-          (o.orderNumber || '').toLowerCase().includes(search.toLowerCase())
-        );
-      })
-    : orders;
+  const toolbarClick = (args: any) => {
+    if (args.item.id?.includes('excelexport')) gridRef.current?.excelExport();
+    if (args.item.id?.includes('pdfexport')) gridRef.current?.pdfExport();
+  };
+
+  const orderTemplate = (row: Order) => (
+    <Link href={`/orders/${row.id}`} className="text-blue-800 font-bold hover:underline">
+      #{row.orderNumber || row.id}
+    </Link>
+  );
+
+  const customerTemplate = (row: Order) => {
+    const customer = row.customer;
+    if (!customer) return <span className="text-slate-400 font-medium">Customer #{row.customerId}</span>;
+    return (
+      <div className="flex flex-col">
+        <Link href={`/customers/${row.customerId}`} className="text-sm font-semibold text-slate-900 hover:text-blue-800 hover:underline">
+          {customer.firstName} {customer.lastName}
+        </Link>
+        <span className="text-[10px] text-slate-500 uppercase tracking-tighter">ID: {row.customerId}</span>
+      </div>
+    );
+  };
+
+  const statusTemplate = (row: Order) => (
+    <StatusBadge status={(row.status ?? 'Pending') as OrderStatus} />
+  );
+
+  const actionsTemplate = (row: Order) => (
+    <div className="flex items-center gap-2">
+      <Link href={`/orders/${row.id}`} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      </Link>
+      <button 
+        onClick={() => handleDelete(row.id)}
+        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    </div>
+  );
 
   return (
-    <AppShell headerAction={{ label: '+ New Order', href: '/orders/new' }}>
-      {/* Page Header */}
-      <div className="flex items-start justify-between mb-6">
+    <AppShell tabTitle="Listado de Pedidos — Sistema Ordenes">
+      <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Listado de Pedidos</h1>
-          <p className="text-sm text-slate-500">Manage and track all logistics orders in real-time.</p>
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">
+            <Link href="/" className="hover:text-blue-600 transition-colors">Inicio</Link>
+            <span>/</span>
+            <span className="text-slate-600">Listado de Pedidos</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Gestión de Órdenes</h1>
+          <p className="text-sm text-slate-500 mt-1">Supervisar y gestionar todos los pedidos entrantes y estados de envío.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-600 hover:bg-slate-50 transition-colors">
+        <Link href="/orders/new">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-blue-800 text-white text-sm font-semibold rounded-lg hover:bg-blue-900 transition-all shadow-sm shadow-blue-200">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Export CSV
+            Crear Pedido
           </button>
-          <Link
-            href="/orders/new"
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-800 text-white rounded-lg hover:bg-blue-900 transition-colors font-medium"
-          >
-            + New Order
-          </Link>
-        </div>
+        </Link>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'TOTAL ORDERS', value: stats.total.toLocaleString(), badge: '+12.5%', badgeUp: true, icon: '🛒' },
-          { label: 'PENDING', value: stats.pending, badge: 'Action Required', badgeColor: 'text-amber-600 bg-amber-50', icon: '📋' },
-          { label: 'DELIVERED', value: stats.delivered, badge: 'On Track', badgeColor: 'text-emerald-600 bg-emerald-50', icon: '🚚' },
-          { label: 'REVENUE (MTD)', value: formatCurrency(stats.revenue), badge: 'Target Met', badgeColor: 'text-blue-600 bg-blue-50', icon: '💰' },
-        ].map((s) => (
-          <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4">
-            <div className="flex items-start justify-between mb-2">
-              <span className="text-lg">{s.icon}</span>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.badgeColor ?? (s.badgeUp ? 'text-emerald-600 bg-emerald-50' : 'text-slate-500 bg-slate-100')}`}>
-                {s.badge}
-              </span>
-            </div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{s.label}</p>
-            <p className="text-2xl font-bold text-slate-900 mt-0.5">{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Table Card */}
-      <div className="bg-white border border-slate-200 rounded-xl">
-        {/* Filters */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-          <div className="flex items-center gap-1">
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => { setActiveTab(tab); setPage(1); }}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  activeTab === tab
-                    ? 'bg-blue-50 text-blue-800 border border-blue-200'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
-              </svg>
-            </button>
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Filter by customer..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-4 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        {loading ? (
-          <LoadingSpinner />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-100">
-                  <th className="text-left px-5 py-3">Order ID</th>
-                  <th className="text-left px-5 py-3">Customer Name</th>
-                  <th className="text-left px-5 py-3">Date</th>
-                  <th className="text-left px-5 py-3">Amount</th>
-                  <th className="text-left px-5 py-3">Status</th>
-                  <th className="text-left px-5 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-400 text-sm">
-                      No orders found.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredOrders.map((order) => {
-                    const customer = order.customer;
-                    const initials = customer
-                      ? `${customer.firstName?.[0] ?? ''}${customer.lastName?.[0] ?? ''}`
-                      : '??';
-                    const fullName = customer
-                      ? `${customer.firstName} ${customer.lastName}`
-                      : `Customer #${order.customerId}`;
-                    const email = customer?.phone ?? '';
-
-                    return (
-                      <tr key={order.id} className="hover:bg-slate-50 transition-colors group">
-                        <td className="px-5 py-4">
-                          <Link
-                            href={`/orders/${order.id}`}
-                            className="text-blue-700 font-semibold hover:underline text-xs"
-                          >
-                            #{order.orderNumber || order.id}
-                          </Link>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[11px] font-bold text-blue-700 flex-shrink-0">
-                              {initials}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-slate-800">{fullName}</p>
-                              <p className="text-xs text-slate-400">{email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-xs text-slate-500">
-                          {new Date(order.orderDate).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', year: 'numeric',
-                          })}
-                        </td>
-                        <td className="px-5 py-4 text-sm font-semibold text-slate-800">
-                          {formatCurrency(order.totalAmount)}
-                        </td>
-                        <td className="px-5 py-4">
-                          <StatusBadge status={(order.status ?? 'Pending') as OrderStatus} />
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-1">
-                            <Link href={`/orders/${order.id}`}>
-                              <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </button>
-                            </Link>
-                            <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-          <p className="text-xs text-slate-500">
-            Showing 1 to {filteredOrders.length} of {total.toLocaleString()} results
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Previous
-            </button>
-            {Array.from({ length: Math.min(3, totalPages) }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`w-8 h-8 text-xs rounded-lg font-medium transition-colors ${
-                  page === p
-                    ? 'bg-blue-800 text-white'
-                    : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-            {totalPages > 3 && (
-              <>
-                <span className="text-slate-400 text-xs px-1">...</span>
-                <button
-                  onClick={() => setPage(totalPages)}
-                  className="w-8 h-8 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  {totalPages}
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-
-        {/* Bottom Banner */}
-        <div className="mx-5 mb-5 bg-slate-900 rounded-xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-white">Automated Optimization is Active</p>
-            <p className="text-xs text-slate-400 mt-1 max-w-md">
-              System AI has analyzed recent order patterns. We recommend prioritizing 12 deliveries
-              to the North-East hub to reduce shipping overhead by 8.4% this week.
-            </p>
-          </div>
-          <button className="px-4 py-2 bg-white text-slate-900 text-sm font-semibold rounded-lg hover:bg-slate-100 transition-colors flex-shrink-0">
-            View Suggestions
-          </button>
-        </div>
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden min-h-[500px]">
+        <GridComponent
+          ref={gridRef}
+          dataSource={orders}
+          allowPaging
+          allowSorting
+          allowFiltering
+          allowExcelExport
+          allowPdfExport
+          toolbar={['Search', 'ExcelExport', 'PdfExport'] as ToolbarItems[]}
+          toolbarClick={toolbarClick}
+          pageSettings={{ pageSize: 10 }}
+          filterSettings={{ type: 'Excel' }}
+          height="auto"
+        >
+          <ColumnsDirective>
+            <ColumnDirective
+              field="orderNumber"
+              headerText="ID Pedido"
+              width="120"
+              template={orderTemplate}
+            />
+            <ColumnDirective
+              field="customerId"
+              headerText="Cliente"
+              width="240"
+              template={customerTemplate}
+            />
+            <ColumnDirective
+              field="orderDate"
+              headerText="Fecha"
+              width="160"
+              template={(row: Order) => (
+                <span className="text-sm text-slate-600">
+                  {new Date(row.orderDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </span>
+              )}
+            />
+            <ColumnDirective
+              field="totalAmount"
+              headerText="Monto Total"
+              width="150"
+              format="C2"
+              textAlign="Right"
+            />
+            <ColumnDirective
+              field="status"
+              headerText="Estado"
+              width="140"
+              template={statusTemplate}
+              textAlign="Center"
+            />
+            <ColumnDirective
+              headerText="Acciones"
+              width="120"
+              textAlign="Center"
+              template={actionsTemplate}
+            />
+          </ColumnsDirective>
+          <Inject services={[Page, Sort, Filter, Group, Search, Toolbar, ExcelExport, PdfExport]} />
+        </GridComponent>
       </div>
     </AppShell>
   );
