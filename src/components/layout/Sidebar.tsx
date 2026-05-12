@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const navItems = [
   {
-    label: 'Dashboard',
+    label: 'Inicio',
     href: '/',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -15,7 +15,7 @@ const navItems = [
     ),
   },
   {
-    label: 'Orders',
+    label: 'Pedidos',
     href: '/orders',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,7 +25,7 @@ const navItems = [
     ),
   },
   {
-    label: 'Products',
+    label: 'Productos',
     href: '/products',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,7 +35,7 @@ const navItems = [
     ),
   },
   {
-    label: 'Clients',
+    label: 'Clientes',
     href: '/customers',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,7 +45,7 @@ const navItems = [
     ),
   },
   {
-    label: 'System Health',
+    label: 'Estado del Sistema',
     href: '/system',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,7 +55,7 @@ const navItems = [
     ),
   },
   {
-    label: 'Settings',
+    label: 'Configuración',
     href: '/settings',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,11 +87,12 @@ export default function Sidebar() {
             </svg>
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-900 leading-tight">OMS Portal</p>
-            <p className="text-[10px] text-slate-500 leading-tight">Enterprise Logistics</p>
+            <p className="text-sm font-bold text-slate-900 leading-tight">Sistema de Órdenes Premium</p>
+            <p className="text-[10px] text-slate-500 leading-tight">Logística Empresarial Avanzada</p>
           </div>
         </div>
       </div>
+
 
       {/* Nav Items */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">

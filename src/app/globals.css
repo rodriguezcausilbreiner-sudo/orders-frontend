@@ -7,7 +7,9 @@
 @import '@syncfusion/ej2-react-popups/styles/material.css';
 @import '@syncfusion/ej2-react-notifications/styles/material.css';
 @import '@syncfusion/ej2-react-calendars/styles/material.css';
+@import '@syncfusion/ej2-grids/styles/material.css';
 @import "tailwindcss";
+
 
 
 :root {

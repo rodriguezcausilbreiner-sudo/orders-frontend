@@ -3,6 +3,7 @@ import Header from './Header';
 
 interface AppShellProps {
   children: React.ReactNode;
+  tabTitle?: string;
   headerAction?: {
     label: string;
     href: string;
