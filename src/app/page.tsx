@@ -8,6 +8,29 @@ import Link from 'next/link';
 import { ordersService } from '@/services/ordersService';
 import { productsService } from '@/services/productsService';
 import { Order, OrderStatus } from '@/types';
+import {
+  ChartComponent,
+  SeriesCollectionDirective,
+  SeriesDirective,
+  Inject as ChartInject,
+  Legend,
+  Category,
+  Tooltip,
+  DataLabel,
+  ColumnSeries,
+  LineSeries,
+  AreaSeries,
+} from '@syncfusion/ej2-react-charts';
+import {
+  AccumulationChartComponent,
+  AccumulationSeriesCollectionDirective,
+  AccumulationSeriesDirective,
+  Inject as AccumInject,
+  AccumulationLegend,
+  AccumulationTooltip,
+  AccumulationDataLabel,
+  PieSeries,
+} from '@syncfusion/ej2-react-charts';
 
 // ── Stat Card ──────────────────────────────────────────────
 function StatCard({
@@ -93,20 +116,15 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         const [ordersRes, productsRes] = await Promise.all([
-          ordersService.getOrders({ page: 1, limit: 5 }),
+          ordersService.getOrders({ page: 1, limit: 10 }),
           productsService.getProducts({ page: 1, limit: 1 }),
         ]);
 
-        const ordersData: Order[] = Array.isArray(ordersRes) ? ordersRes : (ordersRes.data ?? []);
-        const ordersMeta = (ordersRes as any).meta ?? (ordersRes as any).pagination ?? {};
-        const productsData = Array.isArray(productsRes) ? productsRes : (productsRes.data ?? []);
-        const productsMeta = (productsRes as any).meta ?? (productsRes as any).pagination ?? {};
+        setOrders(ordersRes.data);
+        setTotalOrders(ordersRes.meta.total);
+        setTotalProducts(productsRes.meta.total);
 
-        setOrders(ordersData);
-        setTotalOrders(ordersMeta.total ?? ordersMeta.totalItems ?? ordersData.length);
-        setTotalProducts(productsMeta.total ?? productsMeta.totalItems ?? productsData.length);
-
-        const sales = ordersData.reduce((acc, o) => acc + ((o as any).totalAmount || 0), 0);
+        const sales = ordersRes.data.reduce((acc: number, o: Order) => acc + (o.totalAmount || 0), 0);
         setTotalSales(sales);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -127,9 +145,9 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
-            Global Operations
+            Operaciones Globales
           </p>
-          <h1 className="text-xl font-bold text-slate-900">Operational Overview</h1>
+          <h1 className="text-xl font-bold text-slate-900">Resumen Operativo</h1>
         </div>
         <div className="flex items-center gap-3">
           <button className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-600 hover:bg-slate-50 transition-colors">
@@ -137,14 +155,14 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            Today
+            Hoy
           </button>
           <button className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-800 text-white rounded-lg hover:bg-blue-900 transition-colors font-medium">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Export Data
+            Exportar Datos
           </button>
         </div>
       </div>
@@ -156,9 +174,9 @@ export default function DashboardPage() {
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             <StatCard
-              title="Total Sales"
+              title="Ventas Totales"
               value={formatCurrency(totalSales)}
-              subtitle="Compared to previous period"
+              subtitle="En comparación con el período anterior"
               trend="+12%"
               trendUp
             >
@@ -166,18 +184,18 @@ export default function DashboardPage() {
             </StatCard>
 
             <StatCard
-              title="Total Orders"
+              title="Pedidos Totales"
               value={totalOrders.toLocaleString()}
-              subtitle="85% of projected volume achieved"
-              badge="Daily Target"
+              subtitle="85% del volumen proyectado alcanzado"
+              badge="Objetivo Diario"
             >
               <IconOrders />
             </StatCard>
 
             <StatCard
-              title="Active Products"
+              title="Productos Activos"
               value={totalProducts.toLocaleString()}
-              subtitle="Listed in catalog"
+              subtitle="Listados en el catálogo"
             >
               <IconProducts />
             </StatCard>
@@ -185,73 +203,87 @@ export default function DashboardPage() {
 
           {/* Middle Row */}
           <div className="grid grid-cols-3 gap-4 mb-6">
-            {/* Weekly Performance placeholder */}
             <div className="col-span-2 bg-white border border-slate-200 rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Weekly Performance</p>
-                  <p className="text-xs text-slate-500">Order distribution per weekday</p>
-                </div>
-                <div className="flex items-center gap-4 text-xs text-slate-500">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-blue-800 inline-block" /> Completed
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" /> Processing
-                  </span>
+                  <p className="text-sm font-semibold text-slate-900">Rendimiento Semanal</p>
+                  <p className="text-xs text-slate-500">Volumen de pedidos por día</p>
                 </div>
               </div>
-              {/* Bar chart visual */}
-              <div className="flex items-end justify-between gap-2 h-28 px-2">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
-                  const heights = [60, 80, 45, 90, 70, 35, 50];
-                  return (
-                    <div key={day} className="flex-1 flex flex-col items-center gap-1">
-                      <div className="w-full flex flex-col gap-0.5 justify-end" style={{ height: '100px' }}>
-                        <div
-                          className="w-full bg-blue-800 rounded-t-sm"
-                          style={{ height: `${heights[i]}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] text-slate-400">{day}</span>
-                    </div>
-                  );
-                })}
+              <div className="h-64">
+                <ChartComponent
+                  id="weekly-chart"
+                  primaryXAxis={{ valueType: 'Category', labelIntersectAction: 'Rotate45' }}
+                  primaryYAxis={{ labelFormat: '{value}' }}
+                  chartArea={{ border: { width: 0 } }}
+                  tooltip={{ enable: true }}
+                >
+                  <ChartInject services={[ColumnSeries, Category, Tooltip, DataLabel, Legend]} />
+                  <SeriesCollectionDirective>
+                    <SeriesDirective
+                      dataSource={[
+                        { x: 'Lun', y: 45 }, { x: 'Mar', y: 52 }, { x: 'Mié', y: 38 },
+                        { x: 'Jue', y: 65 }, { x: 'Vie', y: 48 }, { x: 'Sáb', y: 25 }, { x: 'Dom', y: 32 }
+                      ]}
+                      xName="x" yName="y"
+                      name="Pedidos"
+                      type="Column"
+                      marker={{ dataLabel: { visible: true, position: 'Top', font: { fontWeight: '600' } } }}
+                      cornerRadius={{ topLeft: 4, topRight: 4 }}
+                      fill="#1e40af"
+                    />
+                  </SeriesCollectionDirective>
+                </ChartComponent>
               </div>
             </div>
 
-            {/* Inventory Health */}
+            {/* Order Status Distribution */}
             <div className="flex flex-col gap-3">
-              <div className="bg-blue-800 rounded-xl p-5 flex-1 text-white">
-                <div className="flex items-start justify-between mb-3">
-                  <p className="text-sm font-semibold">Inventory Health</p>
-                  <svg className="w-8 h-8 text-blue-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-                  </svg>
+              <div className="bg-white border border-slate-200 rounded-xl p-5 flex-1 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900 mb-4">Distribución de Estados</p>
+                <div className="h-48">
+                  <AccumulationChartComponent
+                    id="status-pie"
+                    legendSettings={{ visible: true, position: 'Bottom' }}
+                    enableSmartLabels={true}
+                    tooltip={{ enable: true }}
+                    background="transparent"
+                  >
+                    <AccumInject services={[AccumulationLegend, PieSeries, AccumulationTooltip, AccumulationDataLabel]} />
+                    <AccumulationSeriesCollectionDirective>
+                      <AccumulationSeriesDirective
+                        dataSource={[
+                          { x: 'Entregado', y: 40, text: '40%' },
+                          { x: 'Pendiente', y: 25, text: '25%' },
+                          { x: 'Procesando', y: 20, text: '20%' },
+                          { x: 'Cancelado', y: 15, text: '15%' },
+                        ]}
+                        xName="x" yName="y"
+                        innerRadius="40%"
+                        dataLabel={{
+                          visible: true,
+                          name: 'text',
+                          position: 'Inside',
+                          font: { fontWeight: '600', color: '#ffffff' }
+                        }}
+                        palettes={['#1e40af', '#3b82f6', '#93c5fd', '#cbd5e1']}
+                      />
+                    </AccumulationSeriesCollectionDirective>
+                  </AccumulationChartComponent>
                 </div>
-                <p className="text-xs text-blue-200 mb-4">
-                  Critical stock levels detected for 8 core items in North Region.
-                </p>
-                <button className="px-4 py-2 bg-white text-blue-800 text-xs font-semibold rounded-lg hover:bg-blue-50 transition-colors">
-                  Restock Now
-                </button>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
-                <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-blue-800 rounded-xl p-4 flex items-center gap-3 text-white">
+                <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-800">Server Latency High</p>
-                  <p className="text-[10px] text-slate-500">API nodes showing 120ms lag</p>
+                  <p className="text-xs font-semibold">Salud del Sistema</p>
+                  <p className="text-[10px] text-blue-200">Todos los servicios operando normalmente</p>
                 </div>
-                <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
               </div>
             </div>
           </div>
@@ -259,21 +291,21 @@ export default function DashboardPage() {
           {/* Latest Orders */}
           <div className="bg-white border border-slate-200 rounded-xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <p className="text-sm font-semibold text-slate-900">Latest Orders</p>
+              <p className="text-sm font-semibold text-slate-900">Últimos Pedidos</p>
               <Link href="/orders" className="text-xs text-blue-700 font-medium hover:underline">
-                View All
+                Ver Todos
               </Link>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                    <th className="text-left px-5 py-3">Order ID</th>
-                    <th className="text-left px-5 py-3">Client</th>
-                    <th className="text-left px-5 py-3">Date</th>
-                    <th className="text-left px-5 py-3">Amount</th>
-                    <th className="text-left px-5 py-3">Status</th>
-                    <th className="text-left px-5 py-3">Action</th>
+                    <th className="text-left px-5 py-3">ID Pedido</th>
+                    <th className="text-left px-5 py-3">Cliente</th>
+                    <th className="text-left px-5 py-3">Fecha</th>
+                    <th className="text-left px-5 py-3">Monto</th>
+                    <th className="text-left px-5 py-3">Estado</th>
+                    <th className="text-left px-5 py-3">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -305,7 +337,7 @@ export default function DashboardPage() {
                           </div>
                         </td>
                         <td className="px-5 py-3.5 text-xs text-slate-500">
-                          {new Date(order.orderDate).toLocaleDateString('en-US', {
+                          {new Date(order.orderDate).toLocaleDateString('es-ES', {
                             month: 'short', day: 'numeric', year: 'numeric',
                           })}
                         </td>
@@ -338,8 +370,8 @@ export default function DashboardPage() {
             <div className="px-5 py-4 border-t border-slate-100 flex items-center gap-4">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Storage Usage</p>
-                  <p className="text-[10px] text-slate-400">72% of 5TB used</p>
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Uso de Almacenamiento</p>
+                  <p className="text-[10px] text-slate-400">72% de 5TB utilizados</p>
                 </div>
                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden w-40">
                   <div className="h-full bg-blue-800 rounded-full" style={{ width: '72%' }} />

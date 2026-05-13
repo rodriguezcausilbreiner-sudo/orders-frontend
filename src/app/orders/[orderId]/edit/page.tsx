@@ -9,7 +9,13 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ordersService } from '@/services/ordersService';
 import { Order, OrderItem, OrderStatus } from '@/types';
 
-const STATUS_OPTIONS: OrderStatus[] = ['Pending', 'Processing', 'Delivered', 'Cancelled', 'Sent'];
+const STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
+  { value: 'Pending', label: 'Pendiente' },
+  { value: 'Processing', label: 'Procesando' },
+  { value: 'Delivered', label: 'Entregado' },
+  { value: 'Cancelled', label: 'Cancelado' },
+  { value: 'Sent', label: 'Enviado' },
+];
 
 export default function EditOrderPage() {
   const { orderId } = useParams();
@@ -61,7 +67,7 @@ export default function EditOrderPage() {
   };
 
   const fmt = (v: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+    new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(v);
 
   const subtotal = items.reduce((a, i) => a + i.unitPrice * i.quantity, 0);
   const tax = subtotal * 0.08;
@@ -72,11 +78,11 @@ export default function EditOrderPage() {
   const customer = order.customer;
 
   return (
-    <AppShell>
+    <AppShell tabTitle={`Editar Pedido #${order.orderNumber || order.id}`}>
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link href={`/orders/${order.id}`}>
-          <svg className="w-5 h-5 text-slate-500 hover:text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-slate-500 hover:text-slate-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
@@ -87,7 +93,7 @@ export default function EditOrderPage() {
         {/* Left: Form */}
         <div className="col-span-2 space-y-4">
           {/* Order Info Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Pedido #{order.orderNumber || order.id}</h2>
@@ -98,7 +104,7 @@ export default function EditOrderPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                  Status del Pedido
+                  Estado del Pedido
                 </label>
                 <select
                   value={status}
@@ -106,13 +112,13 @@ export default function EditOrderPage() {
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
                 >
                   {STATUS_OPTIONS.map(s => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                  Data del Pedido
+                  Fecha del Pedido
                 </label>
                 <input
                   type="date"
@@ -135,12 +141,12 @@ export default function EditOrderPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-slate-800">
-                      {customer ? `${customer.firstName} ${customer.lastName}` : `Customer #${order.customerId}`}
+                      {customer ? `${customer.firstName} ${customer.lastName}` : `Cliente #${order.customerId}`}
                     </p>
                     <p className="text-xs text-slate-500">ID: {order.customerId}</p>
                   </div>
                 </div>
-                <button className="text-slate-400 hover:text-slate-600">
+                <button className="text-slate-400 hover:text-slate-600 transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -151,32 +157,32 @@ export default function EditOrderPage() {
           </div>
 
           {/* Items Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
-                <h3 className="text-sm font-semibold text-slate-900">Itens do Pedido</h3>
+                <h3 className="text-sm font-semibold text-slate-900">Artículos del Pedido</h3>
               </div>
-              <button className="flex items-center gap-1 px-3 py-1.5 bg-blue-800 text-white text-xs font-medium rounded-lg hover:bg-blue-900 transition-colors">
-                + Adicionar Produto
+              <button className="flex items-center gap-1 px-3 py-1.5 bg-blue-800 text-white text-xs font-medium rounded-lg hover:bg-blue-900 transition-colors shadow-sm">
+                + Añadir Producto
               </button>
             </div>
 
             <div className="space-y-1">
               <div className="grid grid-cols-12 text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-2 pb-2">
-                <span className="col-span-5">Produto</span>
-                <span className="col-span-3 text-center">Quantidade</span>
-                <span className="col-span-2 text-right">Preço Unit.</span>
+                <span className="col-span-5">Producto</span>
+                <span className="col-span-3 text-center">Cantidad</span>
+                <span className="col-span-2 text-right">Precio Unit.</span>
                 <span className="col-span-2 text-right">Subtotal</span>
               </div>
 
               {items.map((item) => (
-                <div key={item.id} className="grid grid-cols-12 items-center py-3 px-2 rounded-lg hover:bg-slate-50 transition-colors">
+                <div key={item.id} className="grid grid-cols-12 items-center py-3 px-2 rounded-lg hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
                   <div className="col-span-5 flex items-center gap-3">
-                    <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-200">
                       <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                           d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -184,7 +190,7 @@ export default function EditOrderPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-800">
-                        {item.product?.productName ?? `Product #${item.productId}`}
+                        {item.product?.productName ?? `Producto #${item.productId}`}
                       </p>
                       <p className="text-xs text-slate-400">SKU: PRD-{item.productId}</p>
                     </div>
@@ -212,23 +218,23 @@ export default function EditOrderPage() {
 
         {/* Right: Summary */}
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4">Resumo Financeiro</h3>
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">Resumen Financiero</h3>
             <div className="space-y-2 mb-4">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Subtotal ({items.length} itens)</span>
+                <span className="text-slate-500">Subtotal ({items.length} artículos)</span>
                 <span className="font-medium text-slate-800">{fmt(subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Frete Estimado</span>
-                <span className="font-medium text-emerald-600">Grátis</span>
+                <span className="text-slate-500">Envío Estimado</span>
+                <span className="font-medium text-emerald-600">Gratis</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Impostos (IPI/ICMS)</span>
+                <span className="text-slate-500">Impuestos (IPI/ICMS)</span>
                 <span className="font-medium text-slate-800">{fmt(tax)}</span>
               </div>
               <div className="border-t border-slate-100 pt-2 flex justify-between items-center">
-                <span className="text-sm font-semibold text-slate-700">Total do Pedido</span>
+                <span className="text-sm font-semibold text-slate-700">Total del Pedido</span>
                 <span className="text-xl font-bold text-blue-800">{fmt(total)}</span>
               </div>
             </div>
@@ -236,9 +242,9 @@ export default function EditOrderPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full py-2.5 bg-blue-800 text-white text-sm font-semibold rounded-lg hover:bg-blue-900 transition-colors disabled:opacity-60 uppercase tracking-wide"
+              className="w-full py-2.5 bg-blue-800 text-white text-sm font-semibold rounded-lg hover:bg-blue-900 transition-colors disabled:opacity-60 uppercase tracking-wide shadow-sm"
             >
-              {saving ? 'Salvando...' : 'Salvar Alterações'}
+              {saving ? 'Guardando...' : 'Guardar Cambios'}
             </button>
             <Link href={`/orders/${order.id}`}>
               <button className="w-full mt-2 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors uppercase tracking-wide">
@@ -248,28 +254,28 @@ export default function EditOrderPage() {
           </div>
 
           {/* Logistics Info */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Informações de Logística</p>
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Información de Logística</p>
             </div>
             <div className="space-y-1 text-xs text-slate-600">
               <div className="flex justify-between">
                 <span className="text-slate-400">Transportadora:</span>
-                <span className="font-medium">Blue Express Log</span>
+                <span className="font-medium text-slate-800">Blue Express Log</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Prazo Estimado:</span>
-                <span className="font-medium">4-5 dias úteis</span>
+                <span className="text-slate-400">Plazo Estimado:</span>
+                <span className="font-medium text-slate-800">4-5 días hábiles</span>
               </div>
             </div>
           </div>
 
           {/* Notes */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -280,7 +286,7 @@ export default function EditOrderPage() {
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Adicione observações para a equipe de logística..."
+              placeholder="Adicione observaciones para el equipo de logística..."
               rows={3}
               className="w-full text-xs text-slate-600 border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none placeholder:text-slate-300"
             />
